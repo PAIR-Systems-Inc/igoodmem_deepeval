@@ -1,6 +1,6 @@
-## int-goodmem-deepeval
+## igoodmem_deepeval
 
-`int-goodmem-deepeval` is a small, evaluation‑focused integration between **GoodMem** and **DeepEval**.
+`igoodmem_deepeval` is a small, evaluation‑focused integration between **GoodMem** and **DeepEval**.
 
 It is *not* a DeepEval plugin or a memory adapter inside DeepEval itself. Instead, it provides a thin Python package that:
 
