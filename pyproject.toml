@@ -28,5 +28,8 @@ dev = [
 Homepage = "https://docs.goodmem.ai/docs/"
 "DeepEval" = "https://deepeval.com/docs/getting-started"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

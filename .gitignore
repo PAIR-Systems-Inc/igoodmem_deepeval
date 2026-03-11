@@ -11,6 +11,9 @@ build/
 # DeepEval local cache
 .deepeval/
 
+# Claude Code local settings (may contain API keys)
+.claude/
+
 # Virtualenvs
 .venv/
 env/

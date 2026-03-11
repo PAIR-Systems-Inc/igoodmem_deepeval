@@ -35,12 +35,22 @@ class GoodMemEvalClient:
     - Retrieve memories with semantic search and optional filters/rerankers
     """
 
-    def __init__(self, config: GoodMemEvalConfig):
-        configuration = Configuration()
-        configuration.host = config.base_url.rstrip("/")
-        configuration.api_key = {"ApiKeyAuth": config.api_key}
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        config: Optional[GoodMemEvalConfig] = None,
+    ):
+        if config is not None:
+            base_url = config.base_url
+            api_key = config.api_key
+        if not base_url or not api_key:
+            raise ValueError("base_url and api_key are required (pass directly or via config).")
 
-        # NOTE: goodmem-client exposes timeout via ApiClient; we keep it simple here.
+        configuration = Configuration()
+        configuration.host = base_url.rstrip("/")
+        configuration.api_key = {"ApiKeyAuth": api_key}
+
         self._api_client = ApiClient(configuration=configuration)
         self._spaces_api = SpacesApi(self._api_client)
         self._memories_api = MemoriesApi(self._api_client)
@@ -50,28 +60,28 @@ class GoodMemEvalClient:
     def create_space(
         self,
         space_name: str,
-        embedder_id: Optional[str] = None,
+        embedder: Optional[str] = None,
+        chunk_size: int = 256,
+        chunk_overlap: int = 25,
+        keep_separator_strategy: str = "KEEP_END",
+        length_measurement: str = "CHARACTER_COUNT",
         labels: Optional[Dict[str, str]] = None,
         public_read: Optional[bool] = None,
-        default_chunking_config: Optional[Dict[str, Any]] = None,
     ) -> Space:
         """
-        Create a new GoodMem space with a simple configuration surface suitable
+        Create a new GoodMem space with explicit chunking parameters suitable
         for evaluation and benchmarks.
         """
-        if default_chunking_config is None:
-            # Provide a sane default recursive chunking configuration, mirroring
-            # the examples in the official GoodMem docs.
-            default_chunking_config = {
-                "recursive": {
-                    "chunkSize": 1000,
-                    "chunkOverlap": 200,
-                    "separators": ["\n\n", "\n", ".", " "],
-                    "keepStrategy": "KEEP_END",
-                    "separatorIsRegex": False,
-                    "lengthMeasurement": "CHARACTER_COUNT",
-                }
+        default_chunking_config = {
+            "recursive": {
+                "chunkSize": chunk_size,
+                "chunkOverlap": chunk_overlap,
+                "separators": ["\n\n", "\n", ".", " "],
+                "keepStrategy": keep_separator_strategy,
+                "separatorIsRegex": False,
+                "lengthMeasurement": length_measurement,
             }
+        }
 
         request = SpaceCreationRequest(
             name=space_name,
@@ -79,11 +89,10 @@ class GoodMemEvalClient:
             public_read=public_read if public_read is not None else False,
             default_chunking_config=default_chunking_config,
         )
-        # Attach embedder if provided; we keep this minimal to avoid leaking SDK details.
-        if embedder_id is not None:
+        if embedder is not None:
             request.space_embedders = [
                 {
-                    "embedderId": embedder_id,
+                    "embedderId": embedder,
                     "defaultRetrievalWeight": 1.0,
                 }
             ]
@@ -92,27 +101,37 @@ class GoodMemEvalClient:
 
     def list_spaces(self) -> List[Space]:
         response = self._spaces_api.list_spaces()
-        # goodmem-client returns a ListSpacesResponse; we expose just the spaces list.
         spaces: Sequence[Space] = getattr(response, "spaces", []) or []
         return list(spaces)
 
     # Memories ---------------------------------------------------------------
     def create_memory(
         self,
-        space_id: str,
+        space: str,
         text_content: str,
+        source: Optional[str] = None,
+        author: Optional[str] = None,
+        tags: Optional[str] = None,
+        additional_metadata: Optional[Dict[str, Any]] = None,
         content_type: str = "text/plain",
-        metadata: Optional[Dict[str, Any]] = None,
     ) -> Memory:
         """
-        Create a new memory within a space. This uses the JSON form of the API
-        and is sufficient for most evaluation/benchmark scenarios.
+        Create a new memory within a space. Metadata fields (source, author,
+        tags) are promoted to top-level params for convenience.
         """
+        metadata: Dict[str, Any] = dict(additional_metadata or {})
+        if source is not None:
+            metadata["source"] = source
+        if author is not None:
+            metadata["author"] = author
+        if tags is not None:
+            metadata["tags"] = tags
+
         request = MemoryCreationRequest(
-            space_id=space_id,
+            space_id=space,
             original_content=text_content,
             content_type=content_type,
-            metadata=metadata or {},
+            metadata=metadata,
         )
         return self._memories_api.create_memory(memory_creation_request=request)
 
@@ -139,43 +158,38 @@ class GoodMemEvalClient:
         maximum_results: int = 5,
         include_memory_definition: bool = True,
         wait_for_indexing: bool = True,
-        reranker_id: Optional[str] = None,
+        reranker: Optional[str] = None,
+        llm: Optional[str] = None,
         relevance_threshold: Optional[float] = None,
+        llm_temperature: Optional[float] = None,
+        chronological_resort: bool = False,
         metadata_filters: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
-        Execute an advanced semantic retrieval against one or more spaces.
-
-        This uses the POST /v1/memories:retrieve endpoint via the
-        `retrieve_memory_advanced` method, and returns a simple dict structure
-        that is easy to convert into DeepEval retrieval_context lists.
+        Execute a semantic retrieval against one or more spaces using the
+        ChatPostProcessor streaming endpoint.
         """
-        # NOTE: current implementation uses MemoryStreamClient which does not
-        # accept explicit reranker or relevance-threshold parameters. Those
-        # are kept in the signature for future extension but are currently
-        # not forwarded.
-
         space_keys: List[SpaceKey] = []
         for space_id in spaces:
             space_key = SpaceKey(space_id=space_id)
             if metadata_filters:
-                # Caller can pass a pre-built filter expression instead of a dict
-                # by setting a special key. Otherwise, we keep this simple and
-                # assume metadata_filters contains a raw filter string.
                 filter_expr = metadata_filters.get("filter")
                 if filter_expr:
                     space_key.filter = filter_expr
             space_keys.append(space_key)
 
-        # Use the streaming client for advanced retrieval; this is the
-        # officially supported path in goodmem-client.
         events = list(
-            self._stream_client.retrieve_memory_stream(
+            self._stream_client.retrieve_memory_stream_chat(
                 message=query,
                 space_keys=space_keys,
                 requested_size=maximum_results,
                 fetch_memory=include_memory_definition,
                 fetch_memory_content=False,
+                pp_reranker_id=reranker,
+                pp_llm_id=llm,
+                pp_relevance_threshold=relevance_threshold,
+                pp_llm_temp=llm_temperature,
+                pp_chronological_resort=chronological_resort if chronological_resort else None,
             )
         )
 
@@ -187,8 +201,6 @@ class GoodMemEvalClient:
             chunk = retrieved_item.chunk
             memory_def = getattr(event, "memory_definition", None)
 
-             # chunk.chunk is an SDK model field, not a plain dict; handle both
-             # object-with-attribute and mapping styles defensively.
             raw_chunk = getattr(chunk, "chunk", None)
             if isinstance(raw_chunk, dict):
                 chunk_text = raw_chunk.get("chunkText", "")
@@ -211,4 +223,3 @@ class GoodMemEvalClient:
             "query": query,
             "results": results,
         }
-

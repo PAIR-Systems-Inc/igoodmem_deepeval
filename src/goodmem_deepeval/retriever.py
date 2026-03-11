@@ -45,14 +45,20 @@ class GoodMemRetriever:
         spaces: Iterable[str],
         maximum_results: int = 5,
         relevance_threshold: Optional[float] = None,
-        reranker_id: Optional[str] = None,
+        reranker: Optional[str] = None,
+        llm: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        chronological_resort: bool = False,
         metadata_filter: Optional[str] = None,
     ) -> None:
         self._client = client
         self._spaces = list(spaces)
         self._maximum_results = maximum_results
         self._relevance_threshold = relevance_threshold
-        self._reranker_id = reranker_id
+        self._reranker = reranker
+        self._llm = llm
+        self._llm_temperature = llm_temperature
+        self._chronological_resort = chronological_resort
         self._metadata_filter = metadata_filter
 
     def retrieve(self, query: str) -> List[GoodMemChunk]:
@@ -60,8 +66,11 @@ class GoodMemRetriever:
             query=query,
             spaces=self._spaces,
             maximum_results=self._maximum_results,
-            reranker_id=self._reranker_id,
+            reranker=self._reranker,
+            llm=self._llm,
             relevance_threshold=self._relevance_threshold,
+            llm_temperature=self._llm_temperature,
+            chronological_resort=self._chronological_resort,
             metadata_filters={"filter": self._metadata_filter} if self._metadata_filter else None,
         )
         results: Sequence[Dict[str, Any]] = retrieval.get("results", []) or []
@@ -85,4 +94,3 @@ class GoodMemRetriever:
         suitable for DeepEval RAG metrics.
         """
         return [chunk.content for chunk in chunks]
-

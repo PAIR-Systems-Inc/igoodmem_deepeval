@@ -81,7 +81,7 @@ def evaluate_goodmem_retriever_only(
     metrics: Sequence[Any],
     maximum_results: int = 5,
     relevance_threshold: Optional[float] = None,
-    reranker_id: Optional[str] = None,
+    reranker: Optional[str] = None,
     metadata_filter: Optional[str] = None,
 ) -> Any:
     """
@@ -93,7 +93,7 @@ def evaluate_goodmem_retriever_only(
         spaces=spaces,
         maximum_results=maximum_results,
         relevance_threshold=relevance_threshold,
-        reranker_id=reranker_id,
+        reranker=reranker,
         metadata_filter=metadata_filter,
     )
 

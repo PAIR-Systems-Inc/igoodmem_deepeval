@@ -1,11 +1,7 @@
 from __future__ import annotations
 
 """
-Example script showing how to benchmark a GoodMem-backed RAG pipeline
-against a baseline pipeline using DeepEval metrics.
-
-This is intentionally minimal and uses a dummy baseline; in real usage
-you would replace `baseline_pipeline` with your existing RAG system.
+Benchmark a GoodMem-backed RAG pipeline against a baseline using DeepEval.
 """
 
 from typing import List, Tuple
@@ -15,7 +11,6 @@ from deepeval.metrics import AnswerRelevancyMetric, ContextualRelevancyMetric
 
 from goodmem_deepeval import (
     GoodMemEvalClient,
-    GoodMemEvalConfig,
     GoodMemRetriever,
     GoodMemRAGPipeline,
     compare_pipelines,
@@ -28,14 +23,9 @@ def main() -> None:
     if not api_key:
         raise RuntimeError("GOODMEM_API_KEY is not set in the environment.")
 
-    config = GoodMemEvalConfig(
-        base_url=base_url,
-        api_key=api_key,
-    )
-    client = GoodMemEvalClient(config)
+    client = GoodMemEvalClient(base_url=base_url, api_key=api_key)
 
-    # Assume you have already created a space and ingested memories.
-    # Here we reuse the 'rag-benchmark' space created by the smoke example.
+    # Reuse the 'rag-benchmark' space created by the smoke example.
     spaces = client.list_spaces()
     space = next((s for s in spaces if s.name == "rag-benchmark"), None)
     if not space:
@@ -48,7 +38,6 @@ def main() -> None:
     )
 
     def goodmem_generator(query: str, context: List[str]) -> str:
-        # Replace with a real LLM call that uses GoodMem context.
         return "GoodMem-backed answer"
 
     goodmem_pipeline = GoodMemRAGPipeline(
@@ -56,7 +45,6 @@ def main() -> None:
         generator=goodmem_generator,
     )
 
-    # Dummy baseline pipeline; replace with your own implementation.
     def baseline_pipeline(query: str) -> Tuple[str, List[str]]:
         return "Baseline answer", ["Baseline retrieved context"]
 
@@ -84,4 +72,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

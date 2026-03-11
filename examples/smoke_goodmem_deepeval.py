@@ -5,21 +5,19 @@ from goodmem_client.api_client import ApiClient
 from goodmem_client.configuration import Configuration
 from goodmem_deepeval import (
     GoodMemEvalClient,
-    GoodMemEvalConfig,
     GoodMemRetriever,
     GoodMemRAGPipeline,
     evaluate_goodmem_rag,
 )
 
-BASE_URL = os.getenv("GOODMEM_BASE_URL", "http://localhost:8080")  # GoodMem REST endpoint
-API_KEY = os.getenv("GOODMEM_API_KEY")             # paste your API key here
+BASE_URL = os.getenv("GOODMEM_BASE_URL", "http://localhost:8080")
+API_KEY = os.getenv("GOODMEM_API_KEY")
 if not API_KEY:
     raise ValueError("GOODMEM_API_KEY is not set in the environment.")
 
 def main():
     # 1) Wire client
-    config = GoodMemEvalConfig(base_url=BASE_URL, api_key=API_KEY)
-    client = GoodMemEvalClient(config)
+    client = GoodMemEvalClient(base_url=BASE_URL, api_key=API_KEY)
 
     # 1b) Pick an existing embedder (required by the server)
     cfg = Configuration()
@@ -32,20 +30,27 @@ def main():
         raise RuntimeError("No embedders found in GoodMem; create one with `goodmem embedder` first.")
     embedder_id = embedders[0].embedder_id
 
-    # 2) Get or create a space for the benchmark, attached to the chosen embedder
+    # 2) Get or create a space for the benchmark
     spaces = client.list_spaces()
     existing = next((s for s in spaces if s.name == "rag-benchmark"), None)
     if existing:
         space = existing
     else:
-        space = client.create_space(space_name="rag-benchmark", embedder_id=embedder_id)
+        space = client.create_space(
+            space_name="rag-benchmark",
+            embedder=embedder_id,
+            chunk_size=256,
+            chunk_overlap=25,
+        )
     space_id = space.space_id
 
     # 3) Add one memory into that space
     client.create_memory(
-        space_id=space_id,
+        space=space_id,
         text_content="GoodMem supports semantic retrieval with optional reranking.",
-        metadata={"source": "benchmark", "author": "eval-suite"},
+        source="benchmark",
+        author="eval-suite",
+        tags="rag,retrieval",
     )
 
     # 4) Build retriever and simple generator
@@ -56,7 +61,6 @@ def main():
     )
 
     def simple_generator(query: str, context: list[str]) -> str:
-        # In a real app, call an LLM here; for now, echo some context.
         if context:
             return f"GoodMem-based answer: {context[0]}"
         return "No context retrieved."
