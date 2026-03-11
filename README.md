@@ -384,6 +384,7 @@ For advanced users who want DeepEval observability per-component:
 | `examples/benchmark_reranking.py` | Measure impact of reranking on retrieval quality |
 | `examples/metadata_filtered_retrieval.py` | Evaluate metadata-filtered retrieval |
 | `examples/hallucination_detection.py` | Detect hallucination — compares faithful vs hallucinating generators |
+| `examples/openai_rag_eval.py` | **Real LLM** end-to-end RAG eval using OpenAI GPT-4o-mini |
 | `examples/run_benchmark.py` | Full benchmark suite with all evaluation types |
 
 ## Running Tests
