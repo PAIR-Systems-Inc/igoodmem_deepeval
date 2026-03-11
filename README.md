@@ -418,6 +418,19 @@ Results from running `examples/run_benchmark.py` against a local GoodMem server 
 
 Faithfulness is 1.0 across all queries, meaning answers are fully grounded in retrieved context with no hallucination. GoodMem-backed pipelines significantly outperform the baseline.
 
+### Real LLM RAG Eval — OpenAI GPT-4o-mini (examples/openai_rag_eval.py)
+
+True end-to-end: GoodMem retrieves → OpenAI GPT-4o-mini generates → DeepEval GPT-4.1 judges.
+
+| Query | Answer Relevancy | Faithfulness | Contextual Relevancy |
+|-------|-----------------|--------------|---------------------|
+| What are the pricing plans for DataFlow Pro? | 1.0 ✅ | 1.0 ✅ | 0.33 ❌ |
+| What security certifications does DataFlow Pro have? | 1.0 ✅ | 1.0 ✅ | 0.08 ❌ |
+| What databases can DataFlow Pro connect to? | 1.0 ✅ | 1.0 ✅ | 0.09 ❌ |
+| What are the support hours? | 1.0 ✅ | 1.0 ✅ | 0.33 ❌ |
+
+**Answer Relevancy and Faithfulness are perfect** — GPT-4o-mini gave relevant, grounded answers with zero hallucination. **Contextual Relevancy is low** because the retriever returns 3 chunks per query but only 1 is directly relevant. This is a great example of how evaluation metrics help you identify where to improve — in this case, tuning retrieval (fewer chunks or better reranking) would boost contextual relevancy.
+
 ## Project Structure
 
 ```
