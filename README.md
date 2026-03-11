@@ -382,6 +382,7 @@ For advanced users who want DeepEval observability per-component:
 | `examples/benchmark_goodmem_vs_baseline.py` | Compare GoodMem against a dummy baseline |
 | `examples/benchmark_reranking.py` | Measure impact of reranking on retrieval quality |
 | `examples/metadata_filtered_retrieval.py` | Evaluate metadata-filtered retrieval |
+| `examples/hallucination_detection.py` | Detect hallucination — compares faithful vs hallucinating generators |
 | `examples/run_benchmark.py` | Full benchmark suite with all evaluation types |
 
 ## Running Tests
