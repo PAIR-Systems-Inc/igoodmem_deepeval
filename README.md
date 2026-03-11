@@ -72,8 +72,9 @@ export OPENAI_API_KEY="sk-..."                     # your OpenAI API key (for De
 ### Step 2: Verify GoodMem is running
 
 ```bash
-goodmem system info       # check server status
-goodmem apikey list       # verify your API key
+goodmem version           # verify CLI is installed
+goodmem system health     # check server is running
+goodmem apikey list       # verify your API key exists
 ```
 
 ### Step 3: Run the smoke test
