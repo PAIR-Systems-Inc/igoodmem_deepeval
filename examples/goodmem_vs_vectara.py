@@ -42,6 +42,7 @@ from vectara_client import (
     IndexApi,
     QueriesApi,
     CreateCorpusRequest,
+    CreateDocumentRequest,
     CoreDocument,
     CoreDocumentPart,
     QueryCorpusRequest,
@@ -299,7 +300,9 @@ def setup_vectara(max_results: int = 3):
             )
             index_api.create_corpus_document(
                 corpus_key=corpus_key,
-                request_body=core_doc,
+                create_document_request=CreateDocumentRequest(
+                    actual_instance=core_doc,
+                ),
             )
         print(f"  📝 Loaded {len(COMPANY_DOCS)} documents")
         print("  ⏳ Waiting for indexing...")
@@ -352,12 +355,9 @@ def main() -> None:
     print("COMPARISON COMPLETE")
     print("=" * 70)
 
-    for pipeline_name, pipeline_results in results.items():
+    for pipeline_name, eval_result in results.items():
         print(f"\n📊 {pipeline_name}:")
-        if "error" in pipeline_results:
-            print(f"   ❌ Error: {pipeline_results['error']}")
-            continue
-        for tr in pipeline_results.get("test_results", []):
+        for tr in eval_result.test_results:
             print(f"   Query: {tr.input[:50]}...")
             for md in tr.metrics_data:
                 status = "✅" if md.success else "❌"
