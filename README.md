@@ -471,6 +471,8 @@ Same 5 documents, same 4 queries, same OpenAI GPT-4o-mini generator — three re
 
 **Contextual Relevancy pass rate: Vectara 0% → GoodMem (top-1) 50% → GoodMem+filter 50%.** Answer Relevancy and Faithfulness are perfect (1.0) across all configurations. GoodMem's precise retrieval eliminates noisy chunks, and metadata filtering lets you target exact source documents — capabilities Vectara doesn't offer out of the box.
 
+**Why this matters:** Contextual Relevancy measures whether the retrieved chunks are actually relevant to the query — not just whether the final answer is correct. Vectara returns 3 chunks per query, but most are irrelevant noise. GoodMem's precise retrieval (top-1) and metadata filtering both cut out that noise, returning only what's needed. This means less wasted context, lower token costs, and more reliable grounding for your LLM.
+
 ## Project Structure
 
 ```
