@@ -385,6 +385,7 @@ For advanced users who want DeepEval observability per-component:
 | `examples/metadata_filtered_retrieval.py` | Evaluate metadata-filtered retrieval |
 | `examples/hallucination_detection.py` | Detect hallucination — compares faithful vs hallucinating generators |
 | `examples/openai_rag_eval.py` | **Real LLM** end-to-end RAG eval using OpenAI GPT-4o-mini |
+| `examples/retrieval_tuning_eval.py` | **Retrieval tuning** — compare broad vs precise retrieval settings |
 | `examples/run_benchmark.py` | Full benchmark suite with all evaluation types |
 
 ## Running Tests
@@ -430,6 +431,19 @@ True end-to-end: GoodMem retrieves → OpenAI GPT-4o-mini generates → DeepEval
 | What are the support hours? | 1.0 ✅ | 1.0 ✅ | 0.33 ❌ |
 
 **Answer Relevancy and Faithfulness are perfect** — GPT-4o-mini gave relevant, grounded answers with zero hallucination. **Contextual Relevancy is low** because the retriever returns 3 chunks per query but only 1 is directly relevant. This is a great example of how evaluation metrics help you identify where to improve — in this case, tuning retrieval (fewer chunks or better reranking) would boost contextual relevancy.
+
+### Retrieval Tuning — Broad (top-3) vs Precise (top-1) (examples/retrieval_tuning_eval.py)
+
+Shows how tuning `maximum_results` directly improves Contextual Relevancy:
+
+| Query | Metric | Top-3 | Top-1 | Delta |
+|-------|--------|-------|-------|-------|
+| Pricing plans? | Contextual Relevancy | 0.33 | 1.00 | **+0.67** |
+| Security certs? | Contextual Relevancy | 0.08 | 1.00 | **+0.92** |
+| Databases? | Contextual Relevancy | 0.33 | 1.00 | **+0.67** |
+| Support hours? | Contextual Relevancy | 0.09 | 0.25 | +0.16 |
+
+Answer Relevancy and Faithfulness stayed at **1.0 across all queries** in both configurations. Contextual Relevancy pass rate jumped from **0% (top-3) to 50% (top-1)** — proving that fewer, more targeted chunks reduce noise without hurting answer quality.
 
 ## Project Structure
 
