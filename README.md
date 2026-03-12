@@ -386,6 +386,7 @@ For advanced users who want DeepEval observability per-component:
 | `examples/hallucination_detection.py` | Detect hallucination — compares faithful vs hallucinating generators |
 | `examples/openai_rag_eval.py` | **Real LLM** end-to-end RAG eval using OpenAI GPT-4o-mini |
 | `examples/retrieval_tuning_eval.py` | **Retrieval tuning** — compare broad vs precise retrieval settings |
+| `examples/goodmem_vs_vectara.py` | **Head-to-head** — GoodMem vs Vectara on same docs/queries |
 | `examples/run_benchmark.py` | Full benchmark suite with all evaluation types |
 
 ## Running Tests
