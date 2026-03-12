@@ -454,7 +454,7 @@ Demonstrates using `compare_pipelines()` to benchmark GoodMem against an externa
 2. **GoodMem (top-1)** — GoodMem retrieval returning only the top chunk
 3. **GoodMem + metadata filter** — GoodMem retrieval with per-query source filtering
 
-**Note:** This is not an apples-to-apples comparison — the configurations use different top-k settings. The purpose is to demonstrate how `igoodmem_deepeval` can benchmark different retrieval strategies side by side, not to claim one system is better than another.
+**Note:** This is not an apples-to-apples comparison — the configurations use different top-k settings. The purpose is to demonstrate how `igoodmem_deepeval` can benchmark different retrieval strategies side by side.
 
 | Query | Metric | Vectara (top-3) | GoodMem (top-1) | GoodMem+filter |
 |-------|--------|----------------|-----------------|----------------|
