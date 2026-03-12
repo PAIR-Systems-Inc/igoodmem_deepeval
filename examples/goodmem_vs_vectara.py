@@ -1,16 +1,21 @@
 """
-GoodMem vs Vectara — Head-to-Head RAG Comparison with DeepEval
-================================================================
+GoodMem vs Vectara — Fair Cross-System RAG Comparison with DeepEval
+====================================================================
 
 This example evaluates GoodMem and Vectara side-by-side on the same
 documents and queries using DeepEval metrics. Both systems get the
 exact same knowledge base and test questions, and both use the same
-OpenAI GPT-4o-mini generator — so the only variable is retrieval quality.
+OpenAI GPT-4o-mini generator — so the only variable is retrieval.
 
-Three configurations are compared:
-  1. Vectara (top-3)              — standard vector search
-  2. GoodMem (top-1)             — precise retrieval, fewer noisy chunks
-  3. GoodMem + metadata filter   — targeted retrieval using source metadata
+Five configurations are compared (apples-to-apples where possible):
+  1. GoodMem (top-3)               — default retrieval, 3 chunks
+  2. Vectara (top-3)               — default retrieval, 3 chunks
+  3. GoodMem (top-1)               — precise retrieval, 1 chunk
+  4. Vectara (top-1)               — precise retrieval, 1 chunk
+  5. GoodMem + metadata filter     — targeted retrieval using source metadata
+
+Configs 1 vs 2 and 3 vs 4 are direct apples-to-apples comparisons.
+Config 5 showcases GoodMem's metadata filtering capability.
 
 Prerequisites:
     pip install vectara-client
@@ -166,8 +171,7 @@ COMPANY_DOCS = [
     },
 ]
 
-# Each query is paired with the source metadata filter that targets
-# the most relevant document — this is GoodMem's advantage.
+# Each query is paired with the source metadata filter for config 5.
 TEST_QUERIES_WITH_FILTERS = [
     {
         "query": "What are the pricing plans for DataFlow Pro?",
@@ -233,7 +237,7 @@ class VectaraRAGPipeline:
 class GoodMemFilteredPipeline:
     """
     GoodMem pipeline that uses per-query metadata filters.
-    This is GoodMem's advantage — you can target specific document sources.
+    Demonstrates metadata filtering — target specific document sources per query.
     """
 
     def __init__(self, client, space_id, generator, query_filters):
@@ -389,16 +393,16 @@ def print_comparison(all_scores):
     """Print a side-by-side comparison table."""
     labels = list(all_scores.keys())
 
-    print("\n" + "=" * 100)
-    print("HEAD-TO-HEAD COMPARISON — GoodMem vs Vectara")
-    print("=" * 100)
+    print("\n" + "=" * 120)
+    print("CROSS-SYSTEM COMPARISON — GoodMem vs Vectara")
+    print("=" * 120)
 
     # Header
     header = f"{'Query':<35} {'Metric':<22}"
     for label in labels:
-        header += f" {label:>15}"
+        header += f" {label:>18}"
     print(header)
-    print("-" * 100)
+    print("-" * 120)
 
     for query in TEST_QUERIES:
         short_q = query[:32] + "..." if len(query) > 35 else query
@@ -407,9 +411,28 @@ def print_comparison(all_scores):
             row = f"{q_col:<35} {metric:<22}"
             for label in labels:
                 s = all_scores[label].get(query, {}).get(metric, 0)
-                row += f" {s:>15.2f}"
+                row += f" {s:>18.2f}"
             print(row)
         print()
+
+    # Print apples-to-apples summary
+    print("=" * 120)
+    print("APPLES-TO-APPLES SUMMARY (Contextual Relevancy only)")
+    print("=" * 120)
+    print(f"{'Query':<45} {'GoodMem':>10} {'Vectara':>10}  {'Setting':<15}")
+    print("-" * 90)
+    for query in TEST_QUERIES:
+        short_q = query[:42] + "..." if len(query) > 45 else query
+        gm3 = all_scores["GoodMem (top-3)"].get(query, {}).get("Contextual Relevancy", 0)
+        v3 = all_scores["Vectara (top-3)"].get(query, {}).get("Contextual Relevancy", 0)
+        print(f"{short_q:<45} {gm3:>10.2f} {v3:>10.2f}  top-3")
+    print()
+    for query in TEST_QUERIES:
+        short_q = query[:42] + "..." if len(query) > 45 else query
+        gm1 = all_scores["GoodMem (top-1)"].get(query, {}).get("Contextual Relevancy", 0)
+        v1 = all_scores["Vectara (top-1)"].get(query, {}).get("Contextual Relevancy", 0)
+        print(f"{short_q:<45} {gm1:>10.2f} {v1:>10.2f}  top-1")
+    print()
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
@@ -417,30 +440,42 @@ def print_comparison(all_scores):
 
 def main() -> None:
     print("=" * 70)
-    print("GOODMEM vs VECTARA — Head-to-Head RAG Evaluation")
+    print("GOODMEM vs VECTARA — Fair Cross-System RAG Comparison")
     print("=" * 70)
     print()
     print("Same docs, same queries, same generator — only retrieval differs.")
     print()
     print("Configurations:")
-    print("  1. Vectara (top-3)            — standard vector search")
-    print("  2. GoodMem (top-1)            — precise, fewer noisy chunks")
-    print("  3. GoodMem + metadata filter  — targeted source filtering")
+    print("  1. GoodMem (top-3)             — apples-to-apples with Vectara top-3")
+    print("  2. Vectara (top-3)             — apples-to-apples with GoodMem top-3")
+    print("  3. GoodMem (top-1)             — apples-to-apples with Vectara top-1")
+    print("  4. Vectara (top-1)             — apples-to-apples with GoodMem top-1")
+    print("  5. GoodMem + metadata filter   — targeted source filtering")
 
     # Set up both systems
     gm_client, space_id = setup_goodmem()
     vectara_queries_api, corpus_key = setup_vectara()
 
-    # Build 3 pipelines
+    # Build 5 pipelines
     print("\n🔧 Building pipelines...")
 
-    vectara_pipeline = VectaraRAGPipeline(
+    # GoodMem top-3
+    gm_retriever_broad = GoodMemRetriever(
+        client=gm_client, spaces=[space_id], maximum_results=3,
+    )
+    goodmem_broad = GoodMemRAGPipeline(
+        retriever=gm_retriever_broad, generator=openai_generator,
+    )
+
+    # Vectara top-3
+    vectara_broad = VectaraRAGPipeline(
         queries_api=vectara_queries_api,
         corpus_key=corpus_key,
         generator=openai_generator,
         max_results=3,
     )
 
+    # GoodMem top-1
     gm_retriever_precise = GoodMemRetriever(
         client=gm_client, spaces=[space_id], maximum_results=1,
     )
@@ -448,6 +483,15 @@ def main() -> None:
         retriever=gm_retriever_precise, generator=openai_generator,
     )
 
+    # Vectara top-1
+    vectara_precise = VectaraRAGPipeline(
+        queries_api=vectara_queries_api,
+        corpus_key=corpus_key,
+        generator=openai_generator,
+        max_results=1,
+    )
+
+    # GoodMem + metadata filter
     goodmem_filtered = GoodMemFilteredPipeline(
         client=gm_client,
         space_id=space_id,
@@ -456,20 +500,23 @@ def main() -> None:
     )
 
     # Run evaluations
-    print("\n🧪 Running 3 evaluations (this takes a few minutes)...\n")
+    print("\n🧪 Running 5 evaluations (this takes a few minutes)...\n")
 
     all_scores = {}
-    all_scores["Vectara (top-3)"] = run_eval(vectara_pipeline, "Vectara (top-3)")
+    all_scores["GoodMem (top-3)"] = run_eval(goodmem_broad, "GoodMem (top-3)")
+    all_scores["Vectara (top-3)"] = run_eval(vectara_broad, "Vectara (top-3)")
     all_scores["GoodMem (top-1)"] = run_eval(goodmem_precise, "GoodMem (top-1)")
+    all_scores["Vectara (top-1)"] = run_eval(vectara_precise, "Vectara (top-1)")
     all_scores["GoodMem+filter"] = run_eval(goodmem_filtered, "GoodMem + metadata filter")
 
     # Print comparison
     print_comparison(all_scores)
 
     print("💡 KEY TAKEAWAYS:")
-    print("   • GoodMem (top-1) eliminates noisy chunks → higher Contextual Relevancy")
-    print("   • GoodMem + metadata filter targets exact source docs → best precision")
-    print("   • All configs maintain perfect Answer Relevancy and Faithfulness")
+    print("   • Top-3 comparisons are apples-to-apples: same top-k for both systems")
+    print("   • Top-1 comparisons are apples-to-apples: same top-k for both systems")
+    print("   • GoodMem + metadata filter shows what targeted retrieval can do")
+    print("   • Use this framework to find the best retrieval config for your data")
     print()
 
 

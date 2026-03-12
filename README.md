@@ -446,26 +446,40 @@ Shows how tuning `maximum_results` directly improves Contextual Relevancy:
 
 Answer Relevancy and Faithfulness stayed at **1.0 across all queries** in both configurations. Contextual Relevancy pass rate jumped from **0% (top-3) to 50% (top-1)** — proving that fewer, more targeted chunks reduce noise without hurting answer quality.
 
-### GoodMem vs Vectara — Cross-System Comparison (examples/goodmem_vs_vectara.py)
+### GoodMem vs Vectara — Fair Cross-System Comparison (examples/goodmem_vs_vectara.py)
 
-Demonstrates using `compare_pipelines()` to benchmark GoodMem against an external retrieval system. Same 5 documents, same 4 queries, same OpenAI GPT-4o-mini generator — three retrieval configurations compared:
+Demonstrates using `igoodmem_deepeval` to benchmark GoodMem against an external retrieval system. Same 5 documents, same 4 queries, same OpenAI GPT-4o-mini generator — five configurations with apples-to-apples pairings:
 
-1. **Vectara (top-3)** — Vectara vector search returning 3 chunks
-2. **GoodMem (top-1)** — GoodMem retrieval returning only the top chunk
-3. **GoodMem + metadata filter** — GoodMem retrieval with per-query source filtering
+**Apples-to-apples: Top-3 retrieval (Contextual Relevancy)**
 
-**Note:** This is not an apples-to-apples comparison — the configurations use different top-k settings. The purpose is to demonstrate how `igoodmem_deepeval` can benchmark different retrieval strategies side by side.
+| Query | GoodMem (top-3) | Vectara (top-3) |
+|-------|----------------|-----------------|
+| Pricing plans? | 0.33 | 0.09 |
+| Security certs? | 0.08 | 0.09 |
+| Databases? | 0.09 | 0.33 |
+| Support hours? | 0.33 | 0.33 |
 
-| Query | Metric | Vectara (top-3) | GoodMem (top-1) | GoodMem+filter |
-|-------|--------|----------------|-----------------|----------------|
-| Pricing plans? | Contextual Relevancy | 0.33 | 1.00 | 1.00 |
-| Security certs? | Contextual Relevancy | 0.09 | 0.33 | 0.25 |
-| Databases? | Contextual Relevancy | 0.09 | 1.00 | 0.33 |
-| Support hours? | Contextual Relevancy | 0.33 | 0.25 | 1.00 |
+**Apples-to-apples: Top-1 retrieval (Contextual Relevancy)**
 
-Answer Relevancy and Faithfulness were **1.0 across all configurations** — all three produce correct, grounded answers.
+| Query | GoodMem (top-1) | Vectara (top-1) |
+|-------|----------------|-----------------|
+| Pricing plans? | 1.00 | 1.00 |
+| Security certs? | 1.00 | 1.00 |
+| Databases? | 0.25 | 0.25 |
+| Support hours? | 0.33 | 0.33 |
 
-**Takeaway:** Retrieval settings (top-k, metadata filters) have a big impact on Contextual Relevancy. This tool helps you find the right configuration for your use case by making it easy to benchmark any combination of retrieval systems and settings with real metrics.
+**GoodMem + metadata filter (Contextual Relevancy)**
+
+| Query | GoodMem+filter |
+|-------|----------------|
+| Pricing plans? | 0.33 |
+| Security certs? | 1.00 |
+| Databases? | 0.25 |
+| Support hours? | 1.00 |
+
+Answer Relevancy and Faithfulness were **1.0 across all 5 configurations** — all produce correct, grounded answers.
+
+**Takeaway:** With matching settings, GoodMem and Vectara perform comparably — both are solid retrieval systems. The real value of this tool is making it easy to benchmark different retrieval strategies (top-k, metadata filters, reranking) side by side so you can find the optimal config for your specific data and queries.
 
 ## Project Structure
 
