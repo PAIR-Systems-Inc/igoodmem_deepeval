@@ -47,18 +47,25 @@ def client() -> GoodMemClient:
 @pytest.fixture(scope="module")
 def space_with_data(client: GoodMemClient):
     """Create a space, populate it with text memories, and return the space."""
-    # Prefer the Voyage embedder for faster/more reliable indexing.
-    # Fall back to the first available embedder if Voyage is not found.
-    VOYAGE_EMBEDDER_ID = os.environ.get("GOODMEM_EMBEDDER_ID", "")
     embedders = client.list_embedders()
     assert len(embedders) > 0, "No embedders available on the GoodMem server"
-    if VOYAGE_EMBEDDER_ID:
-        embedder_id = VOYAGE_EMBEDDER_ID
+
+    requested_id = os.environ.get("GOODMEM_EMBEDDER_ID", "")
+    if requested_id:
+        # Validate that the requested embedder exists on the server
+        match = [e for e in embedders if e.embedder_id == requested_id]
+        assert match, (
+            f"GOODMEM_EMBEDDER_ID={requested_id} not found. "
+            f"Available: {[e.embedder_id for e in embedders]}"
+        )
+        embedder_id = requested_id
     else:
-        # Try to find a Voyage embedder by name
-        voyage = [e for e in embedders if "voyage" in (e.display_name or "").lower()]
-        embedder_id = voyage[0].embedder_id if voyage else embedders[0].embedder_id
-    print(f"\n  Using embedder: {embedder_id}")
+        embedder_id = embedders[0].embedder_id
+
+    display_name = next(
+        (e.display_name for e in embedders if e.embedder_id == embedder_id), None
+    )
+    print(f"\n  Using embedder: {embedder_id} ({display_name})")
 
     unique_name = f"deepeval-eval-{uuid.uuid4().hex[:8]}"
     space = client.create_space(name=unique_name, embedder_id=embedder_id)
