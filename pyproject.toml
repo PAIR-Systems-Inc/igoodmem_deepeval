@@ -23,6 +23,10 @@ dependencies = [
 dev = [
   "pytest>=7.0",
 ]
+benchmark = [
+  "tqdm>=4.0",
+  "vectara-client",
+]
 
 [project.urls]
 Homepage = "https://docs.goodmem.ai/docs/"
