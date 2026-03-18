@@ -14,6 +14,12 @@ build/
 # Claude Code local settings (may contain API keys)
 .claude/
 
+# Downloaded datasets (large files)
+data/*.json
+
+# Benchmark results
+*.results.json
+
 # Virtualenvs
 .venv/
 env/
