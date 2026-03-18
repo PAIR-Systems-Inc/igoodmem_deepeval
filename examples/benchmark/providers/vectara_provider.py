@@ -8,11 +8,12 @@ from typing import List, Optional, Tuple
 from .base import Generator, RAGPipeline, RetrievalProvider
 from ..datasets import BenchmarkDocument
 
-CORPUS_KEY = "scaled-benchmark"
+CORPUS_KEY = "scaled-benchmark-chunked"
 BATCH_SIZE = 50
 BATCH_DELAY = 1.0
 INDEX_WAIT = 10
-MAX_PART_SIZE = 15000  # Vectara max is 16,384 chars per document part; leave margin
+CHUNK_SIZE = 512   # Match GoodMem's chunk size for apples-to-apples comparison
+CHUNK_OVERLAP = 50  # Match GoodMem's chunk overlap
 
 
 class _VectaraPipeline:
@@ -131,13 +132,15 @@ class VectaraProvider(RetrievalProvider):
         for i in range(0, total, BATCH_SIZE):
             batch = documents[i : i + BATCH_SIZE]
             for doc in batch:
-                # Split large documents into multiple parts (Vectara limit: 16KB per part)
+                # Pre-chunk documents into ~512-char pieces (matching GoodMem)
+                # so Vectara stores each chunk as a separate searchable part.
                 text = doc.text
                 parts = []
-                while text:
-                    chunk = text[:MAX_PART_SIZE]
-                    text = text[MAX_PART_SIZE:]
-                    parts.append(CoreDocumentPart(text=chunk))
+                start = 0
+                while start < len(text):
+                    end = min(start + CHUNK_SIZE, len(text))
+                    parts.append(CoreDocumentPart(text=text[start:end]))
+                    start += CHUNK_SIZE - CHUNK_OVERLAP
 
                 core_doc = CoreDocument(
                     id=doc.doc_id,
