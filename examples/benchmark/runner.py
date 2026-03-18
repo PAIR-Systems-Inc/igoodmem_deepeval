@@ -130,11 +130,12 @@ def _run_single_config(
     ]
 
     start = time.time()
-    from deepeval.evaluate.configs import ErrorConfig
+    from deepeval.evaluate.configs import AsyncConfig, ErrorConfig
     result = evaluate(
         test_cases=test_cases,
         metrics=metrics,
         error_config=ErrorConfig(ignore_errors=True),
+        async_config=AsyncConfig(max_concurrent=5, throttle_value=1),
     )
     eval_time = time.time() - start
 
