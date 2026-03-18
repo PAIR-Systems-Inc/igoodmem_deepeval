@@ -26,6 +26,7 @@ dev = [
 benchmark = [
   "tqdm>=4.0",
   "vectara-client",
+  "weaviate-client>=4.0",
 ]
 
 [project.urls]
