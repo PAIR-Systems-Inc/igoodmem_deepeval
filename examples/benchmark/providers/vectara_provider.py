@@ -127,6 +127,7 @@ class VectaraProvider(RetrievalProvider):
             raise RuntimeError(f"Corpus {self._corpus_key} not ready after 30s")
 
         total = len(documents)
+        indexed_ok = 0
         for i in range(0, total, BATCH_SIZE):
             batch = documents[i : i + BATCH_SIZE]
             for doc in batch:
@@ -141,7 +142,6 @@ class VectaraProvider(RetrievalProvider):
                 core_doc = CoreDocument(
                     id=doc.doc_id,
                     type="core",
-                    metadata=doc.metadata,
                     document_parts=parts,
                 )
                 # Retry indexing in case corpus is still propagating
@@ -153,16 +153,23 @@ class VectaraProvider(RetrievalProvider):
                                 actual_instance=core_doc,
                             ),
                         )
+                        indexed_ok += 1
                         break
                     except Exception as e:
                         if retry < 2 and "404" in str(e):
                             time.sleep(5)
                         else:
-                            raise
-            indexed = min(i + BATCH_SIZE, total)
-            print(f"  📝 Indexed {indexed}/{total} documents")
-            if indexed < total:
+                            title = doc.metadata.get("title", doc.doc_id)
+                            print(f"  ⚠️  Failed to index '{title}' ({len(parts)} parts, "
+                                  f"{sum(len(p.text) for p in parts)} chars): {e}")
+                            break
+            progress = min(i + BATCH_SIZE, total)
+            print(f"  📝 Processed {progress}/{total} documents ({indexed_ok} indexed)")
+            if progress < total:
                 time.sleep(BATCH_DELAY)
+
+        if indexed_ok < total:
+            print(f"  ⚠️  Only {indexed_ok}/{total} documents indexed successfully")
 
         print(f"  ⏳ Waiting {INDEX_WAIT}s for indexing to complete...")
         time.sleep(INDEX_WAIT)
