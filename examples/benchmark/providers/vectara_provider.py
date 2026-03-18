@@ -71,6 +71,8 @@ class VectaraProvider(RetrievalProvider):
             CreateDocumentRequest,
             CoreDocument,
             CoreDocumentPart,
+            QueryCorpusRequest,
+            SearchCorpusParameters,
         )
 
         vcfg = VectaraConfiguration()
@@ -86,8 +88,20 @@ class VectaraProvider(RetrievalProvider):
 
         try:
             corpus = corpora_api.get_corpus(corpus_key=self._corpus_key)
-            print(f"  📂 Reusing existing corpus: {self._corpus_key}")
-            return
+            # Verify corpus actually has documents by doing a test query
+            test_resp = self._queries_api.query_corpus(
+                corpus_key=self._corpus_key,
+                query_corpus_request=QueryCorpusRequest(
+                    query="test",
+                    search=SearchCorpusParameters(limit=1),
+                ),
+            )
+            if test_resp.search_results and len(test_resp.search_results) > 0:
+                print(f"  📂 Reusing existing corpus: {self._corpus_key}")
+                return
+            else:
+                print(f"  ⚠️  Corpus exists but is empty. Deleting and recreating...")
+                corpora_api.delete_corpus(corpus_key=self._corpus_key)
         except Exception:
             pass
 
@@ -99,6 +113,18 @@ class VectaraProvider(RetrievalProvider):
             )
         )
         print(f"  📂 Created corpus: {self._corpus_key}")
+
+        # Vectara corpus creation is async — poll until ready
+        print("  ⏳ Waiting for corpus to be available...")
+        for attempt in range(10):
+            try:
+                corpora_api.get_corpus(corpus_key=self._corpus_key)
+                print("  ✅ Corpus is ready")
+                break
+            except Exception:
+                time.sleep(3)
+        else:
+            raise RuntimeError(f"Corpus {self._corpus_key} not ready after 30s")
 
         total = len(documents)
         for i in range(0, total, BATCH_SIZE):
@@ -118,12 +144,21 @@ class VectaraProvider(RetrievalProvider):
                     metadata=doc.metadata,
                     document_parts=parts,
                 )
-                index_api.create_corpus_document(
-                    corpus_key=self._corpus_key,
-                    create_document_request=CreateDocumentRequest(
-                        actual_instance=core_doc,
-                    ),
-                )
+                # Retry indexing in case corpus is still propagating
+                for retry in range(3):
+                    try:
+                        index_api.create_corpus_document(
+                            corpus_key=self._corpus_key,
+                            create_document_request=CreateDocumentRequest(
+                                actual_instance=core_doc,
+                            ),
+                        )
+                        break
+                    except Exception as e:
+                        if retry < 2 and "404" in str(e):
+                            time.sleep(5)
+                        else:
+                            raise
             indexed = min(i + BATCH_SIZE, total)
             print(f"  📝 Indexed {indexed}/{total} documents")
             if indexed < total:

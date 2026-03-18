@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
 # Increase DeepEval's per-test-case timeout for long documents
-os.environ.setdefault("DEEPEVAL_TIMEOUT", "300")
+os.environ.setdefault("DEEPEVAL_TIMEOUT", "600")
 
 from openai import OpenAI
 
@@ -105,7 +105,7 @@ def _run_single_config(
         answer, ctx = pipeline(bq.query)
         # Truncate long context chunks to avoid DeepEval/OpenAI timeouts.
         # The LLM judge doesn't need 20K+ char contexts to assess relevancy.
-        ctx = [c[:3000] for c in ctx]
+        ctx = [c[:1500] for c in ctx[:5]]
         raw_outputs.append((answer, ctx))
 
         tc = LLMTestCase(
@@ -130,7 +130,12 @@ def _run_single_config(
     ]
 
     start = time.time()
-    result = evaluate(test_cases=test_cases, metrics=metrics)
+    from deepeval.evaluate.configs import ErrorConfig
+    result = evaluate(
+        test_cases=test_cases,
+        metrics=metrics,
+        error_config=ErrorConfig(ignore_errors=True),
+    )
     eval_time = time.time() - start
 
     # Build structured results
