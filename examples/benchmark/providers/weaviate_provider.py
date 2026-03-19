@@ -116,41 +116,60 @@ class WeaviateProvider(RetrievalProvider):
             )
         print(f"  📂 Created collection: {self._collection_name}")
 
-        # Pre-chunk and batch index
-        collection = self._client.collections.get(self._collection_name)
-        total_chunks = 0
-        failed = 0
-
-        for doc_idx, doc in enumerate(documents):
-            # Pre-chunk to match GoodMem/Vectara (512 chars, 50 overlap)
+        # Pre-chunk all documents first
+        all_chunks = []
+        for doc in documents:
             text = doc.text
-            chunks = []
             start = 0
             while start < len(text):
                 end = min(start + CHUNK_SIZE, len(text))
-                chunks.append(text[start:end])
+                all_chunks.append({"text": text[start:end], "doc_id": doc.doc_id})
                 start += CHUNK_SIZE - CHUNK_OVERLAP
 
-            # Batch insert chunks
-            with collection.batch.fixed_size(batch_size=BATCH_SIZE) as batch:
-                for chunk in chunks:
-                    batch.add_object(properties={
-                        "text": chunk,
-                        "doc_id": doc.doc_id,
-                    })
+        print(f"  📝 Prepared {len(all_chunks)} chunks from {len(documents)} documents")
 
-            # Check for errors
-            if collection.batch.failed_objects:
-                failed += len(collection.batch.failed_objects)
+        # Batch insert with retries for transient OpenAI errors
+        collection = self._client.collections.get(self._collection_name)
+        MAX_RETRIES = 3
+        pending = all_chunks
+        total_inserted = 0
 
-            total_chunks += len(chunks)
-            if (doc_idx + 1) % 10 == 0 or doc_idx == len(documents) - 1:
-                print(f"  📝 Indexed {doc_idx + 1}/{len(documents)} documents ({total_chunks} chunks)")
+        for attempt in range(MAX_RETRIES):
+            failed_chunks = []
 
-        if failed:
-            print(f"  ⚠️  {failed} chunks failed to index")
+            for i in range(0, len(pending), BATCH_SIZE):
+                batch_items = pending[i : i + BATCH_SIZE]
+                with collection.batch.fixed_size(batch_size=BATCH_SIZE) as batch:
+                    for chunk in batch_items:
+                        batch.add_object(properties=chunk)
 
-        print(f"  ✅ Weaviate ready ({total_chunks} chunks indexed)")
+                if collection.batch.failed_objects:
+                    # Collect failed chunks for retry
+                    failed_props = {str(o.original_uuid) for o in collection.batch.failed_objects}
+                    failed_chunks.extend(batch_items[-len(collection.batch.failed_objects):])
+
+                inserted_this_batch = len(batch_items) - (
+                    len(collection.batch.failed_objects) if collection.batch.failed_objects else 0
+                )
+                total_inserted += max(inserted_this_batch, 0)
+
+                progress = min(i + BATCH_SIZE, len(pending))
+                if progress % 500 < BATCH_SIZE or progress == len(pending):
+                    print(f"  📝 Attempt {attempt + 1}: processed {progress}/{len(pending)} chunks")
+
+            if not failed_chunks:
+                break
+
+            print(f"  ⚠️  {len(failed_chunks)} chunks failed (attempt {attempt + 1}/{MAX_RETRIES})")
+            if attempt < MAX_RETRIES - 1:
+                wait = 10 * (attempt + 1)
+                print(f"  ⏳ Waiting {wait}s before retry...")
+                time.sleep(wait)
+                pending = failed_chunks
+            else:
+                print(f"  ⚠️  {len(failed_chunks)} chunks still failing after {MAX_RETRIES} attempts")
+
+        print(f"  ✅ Weaviate ready ({total_inserted}/{len(all_chunks)} chunks indexed)")
 
     def make_pipeline(
         self,
