@@ -33,7 +33,7 @@ import sys
 import time
 
 from .datasets import load_squad_subset
-from .providers import GoodMemProvider, VectaraProvider, WeaviateProvider
+from .providers import ContextualAIProvider, GoodMemProvider, VectaraProvider, WeaviateProvider
 from .providers.base import RetrievalProvider
 from .runner import (
     export_results_json,
@@ -47,6 +47,7 @@ PROVIDER_REGISTRY = {
     "goodmem": GoodMemProvider,
     "vectara": VectaraProvider,
     "weaviate": WeaviateProvider,
+    "contextual": ContextualAIProvider,
 }
 
 
