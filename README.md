@@ -99,7 +99,7 @@ If you see scores printed, everything is working.
 
 ## Benchmark Results: GoodMem vs the Competition
 
-We benchmarked GoodMem head-to-head against **Vectara**, **Weaviate**, and **Contextual AI** using a rigorous, standardized evaluation framework. The results speak for themselves.
+We benchmarked GoodMem head-to-head against **Vectara**, **Weaviate**, and **Contextual AI** using this integration with DeepEval. The results speak for themselves.
 
 ### Test Setup
 
